@@ -130,7 +130,7 @@ CheckButtonInterval check_button(button_pin,
                                  25ULL,
                                  50ULL,
                                  nullptr);
-constexpr Interval* intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
+Interval* const intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
 
 
 struct State
@@ -151,10 +151,10 @@ uint32_t get_crc(const void* data, size_t size)
     return crc;
 }
 
+State state;
 
 void load_state()
 {
-    State state;
     EEPROM.get(0, state);
     if (state.crc == get_crc(&state.data, sizeof(state.data))) {
         for (size_t i = 0; i < State::intervals_count; i++)
@@ -168,7 +168,6 @@ void load_state()
 
 void save_state()
 {
-    State state;
     for (size_t i = 0; i < State::intervals_count; i++)
         state.data.times[i] = intervals[i]->save();
     state.crc = get_crc(&state.data, sizeof(state.data));
@@ -178,7 +177,6 @@ void save_state()
 
 void reset_state()
 {
-    State state;
     for (size_t i = 0; i < State::intervals_count; i++)
         state.data.times[i] = 0;
     state.crc = get_crc(&state.data, sizeof(state.data));
