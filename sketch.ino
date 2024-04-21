@@ -1,12 +1,12 @@
+
 #include "util.h"
 #include "interval.h"
 #include <EEPROM.h>
 
 
-constexpr uint8_t relay1_pin = 10;
-constexpr uint8_t relay2_pin = 11;
-constexpr uint8_t button_pin = 12;
-constexpr uint8_t autosave_led_pin = 13;
+constexpr uint8_t relay1_pin = 2;
+constexpr uint8_t relay2_pin = 3;
+constexpr uint8_t button_pin = 4;
 
 
 class Relay1Interval : public Interval
@@ -75,7 +75,7 @@ public:
 
 public:
     void enter() override;
-    void exit() override;
+    void exit() override {}
 
 };
 
@@ -99,35 +99,18 @@ private:
 };
 
 
-Relay1Interval relay1(relay1_pin,
-                      0ULL * 1000 * 3600,
-                      16ULL * 1000 * 3600,
-                      24ULL * 1000 * 3600);
-Relay2Interval relay2_true(&relay1, true, relay2_pin,
-                           0ULL * 1000 * 3600,
-                           3ULL * 1000 * 60,
-                           30ULL * 1000 * 60);
-Relay2Interval relay2_false(&relay1, false, relay2_pin,
-                            0ULL * 1000 * 3600,
-                            3ULL * 1000 * 60,
-                            120ULL * 1000 * 60);
-AutosaveInterval autosave(0ULL * 1000,
-                          0ULL * 1000 + 100,
-                          30ULL * 1000);
-CheckButtonInterval check_button(button_pin,
-                                 0ULL,
-                                 25ULL,
-                                 50ULL);
+Relay1Interval relay1(relay1_pin, 0ULL * 1000 * 3600, 16ULL * 1000 * 3600, 24ULL * 1000 * 3600);
+Relay2Interval relay2_true(&relay1, true, relay2_pin, 0ULL * 1000 * 3600, 3ULL * 1000 * 60, 30ULL * 1000 * 60);
+Relay2Interval relay2_false(&relay1, false, relay2_pin, 0ULL * 1000 * 3600, 3ULL * 1000 * 60, 120ULL * 1000 * 60);
+AutosaveInterval autosave(0ULL * 1000, 1ULL * 1000, 30ULL * 1000);
+CheckButtonInterval check_button(button_pin, 0ULL, 25ULL, 50ULL);
 constexpr Interval* intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
 
 
 struct State
 {
     static constexpr auto intervals_count = sizeof(intervals) / sizeof(intervals)[0];
-    struct Data {
-        Time times[intervals_count];
-    };
-    Data data;
+    Time times[intervals_count];
     uint32_t crc;
 };
 
@@ -144,17 +127,9 @@ void load_state()
 {
     State state;
     EEPROM.get(0, state);
-    if (state.crc == get_crc(&state.data, sizeof(state.data))) {
+    if (state.crc == get_crc(&state, sizeof(state))) {
         for (size_t i = 0; i < State::intervals_count; i++)
-            intervals[i]->load(state.data.times[i]);
-    }
-    else {
-        for (int i = 0; i < 5; i++) {
-            digitalWrite(autosave_led_pin, true);
-            delay(350);
-            digitalWrite(autosave_led_pin, false);
-            delay(350);
-        }
+            intervals[i]->load(state.times[i]);
     }
 }
 
@@ -162,8 +137,8 @@ void save_state()
 {
     State state;
     for (size_t i = 0; i < State::intervals_count; i++)
-        state.data.times[i] = intervals[i]->save();
-    state.crc = get_crc(&state.data, sizeof(state.data));
+        state.times[i] = intervals[i]->save();
+    state.crc = get_crc(&state, sizeof(state));
     EEPROM.put(0, state);
 }
 
@@ -171,32 +146,23 @@ void reset_state()
 {
     State state;
     for (size_t i = 0; i < State::intervals_count; i++)
-        state.data.times[i] = 0;
-    state.crc = get_crc(&state.data, sizeof(state.data));
+        state.times[i] = 0;
+    state.crc = get_crc(&state, sizeof(state));
     EEPROM.put(0, state);
     load_state();
-    digitalWrite(autosave_led_pin, true);
-    delay(1000);
-    digitalWrite(autosave_led_pin, false);
 }
 
 void setup()
 {
-    pinMode(button_pin, INPUT_PULLUP);
     pinMode(relay1_pin, OUTPUT);
     pinMode(relay2_pin, OUTPUT);
+    pinMode(button_pin, INPUT_PULLUP);
     load_state();
 }
 
 void AutosaveInterval::enter()
 {
     save_state();
-    digitalWrite(autosave_led_pin, true);
-}
-
-void AutosaveInterval::exit()
-{
-    digitalWrite(autosave_led_pin, false);
 }
 
 void CheckButtonInterval::enter()
