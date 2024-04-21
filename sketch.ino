@@ -1,6 +1,7 @@
+
+#include <EEPROM.h>
 #include "util.h"
 #include "interval.h"
-#include <EEPROM.h>
 
 
 constexpr uint8_t relay1_pin = 10;
@@ -158,6 +159,10 @@ void load_state()
     if (state.crc == get_crc(&state.data, sizeof(state.data))) {
         for (size_t i = 0; i < State::intervals_count; i++)
             intervals[i]->load(state.data.times[i]);
+        Serial.println("load config");
+    }
+    else {
+        Serial.println("error load config");
     }
 }
 
@@ -168,6 +173,7 @@ void save_state()
         state.data.times[i] = intervals[i]->save();
     state.crc = get_crc(&state.data, sizeof(state.data));
     EEPROM.put(0, state);
+    Serial.println("save config");
 }
 
 void reset_state()
@@ -181,6 +187,7 @@ void reset_state()
     digitalWrite(autosave_led_pin, true);
     delay(1000);
     digitalWrite(autosave_led_pin, false);
+    Serial.println("reset config");
 }
 
 void setup()
