@@ -212,9 +212,12 @@ void AutosaveInterval::exit()
 void CheckButtonInterval::enter()
 {
     auto value = digitalRead(_pin);
-    _last = value;
-    if (_last != value and value)
+    if (_last != value and not value) {
+        _last = value;
         reset_state();
+    }
+    else
+        _last = value;
 }
 
 void loop()
