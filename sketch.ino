@@ -185,6 +185,7 @@ void setup()
     pinMode(button_pin, INPUT_PULLUP);
     pinMode(relay1_pin, OUTPUT);
     pinMode(relay2_pin, OUTPUT);
+    pinMode(autosave_led_pin, OUTPUT);
     load_state();
 }
 
