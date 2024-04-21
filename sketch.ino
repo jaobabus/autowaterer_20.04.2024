@@ -153,6 +153,9 @@ void reset_state()
     state.crc = get_crc(&state.data, sizeof(state.data));
     EEPROM.put(0, state);
     load_state();
+    digitalWrite(autosave_led_pin, true);
+    delay(1000);
+    digitalWrite(autosave_led_pin, false);
 }
 
 void setup()
