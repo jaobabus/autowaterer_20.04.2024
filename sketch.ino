@@ -6,6 +6,7 @@
 constexpr uint8_t relay1_pin = 10;
 constexpr uint8_t relay2_pin = 11;
 constexpr uint8_t button_pin = 12;
+constexpr uint8_t autosave_led_pin = 13;
 
 
 class Relay1Interval : public Interval
@@ -74,7 +75,7 @@ public:
 
 public:
     void enter() override;
-    void exit() override {}
+    void exit() override;
 
 };
 
@@ -101,7 +102,7 @@ private:
 Relay1Interval relay1(relay1_pin, 0ULL * 1000 * 3600, 16ULL * 1000 * 3600, 24ULL * 1000 * 3600);
 Relay2Interval relay2_true(&relay1, true, relay2_pin, 0ULL * 1000 * 3600, 3ULL * 1000 * 60, 30ULL * 1000 * 60);
 Relay2Interval relay2_false(&relay1, false, relay2_pin, 0ULL * 1000 * 3600, 3ULL * 1000 * 60, 120ULL * 1000 * 60);
-AutosaveInterval autosave(0ULL * 1000, 1ULL * 1000, 30ULL * 1000);
+AutosaveInterval autosave(0ULL * 1000, 0ULL * 1000 + 100, 30ULL * 1000);
 CheckButtonInterval check_button(button_pin, 0ULL, 25ULL, 50ULL);
 constexpr Interval* intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
 
@@ -165,6 +166,12 @@ void setup()
 void AutosaveInterval::enter()
 {
     save_state();
+    digitalWrite(autosave_led_pin, true);
+}
+
+void AutosaveInterval::exit()
+{
+    digitalWrite(autosave_led_pin, false);
 }
 
 void CheckButtonInterval::enter()
