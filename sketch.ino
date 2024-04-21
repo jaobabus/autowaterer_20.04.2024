@@ -99,11 +99,25 @@ private:
 };
 
 
-Relay1Interval relay1(relay1_pin, 0ULL * 1000 * 3600, 16ULL * 1000 * 3600, 24ULL * 1000 * 3600);
-Relay2Interval relay2_true(&relay1, true, relay2_pin, 0ULL * 1000 * 3600, 3ULL * 1000 * 60, 30ULL * 1000 * 60);
-Relay2Interval relay2_false(&relay1, false, relay2_pin, 0ULL * 1000 * 3600, 3ULL * 1000 * 60, 120ULL * 1000 * 60);
-AutosaveInterval autosave(0ULL * 1000, 0ULL * 1000 + 100, 30ULL * 1000);
-CheckButtonInterval check_button(button_pin, 0ULL, 25ULL, 50ULL);
+Relay1Interval relay1(relay1_pin,
+                      0ULL * 1000 * 3600,
+                      16ULL * 1000 * 3600,
+                      24ULL * 1000 * 3600);
+Relay2Interval relay2_true(&relay1, true, relay2_pin,
+                           0ULL * 1000 * 3600,
+                           3ULL * 1000 * 60,
+                           30ULL * 1000 * 60);
+Relay2Interval relay2_false(&relay1, false, relay2_pin,
+                            0ULL * 1000 * 3600,
+                            3ULL * 1000 * 60,
+                            120ULL * 1000 * 60);
+AutosaveInterval autosave(0ULL * 1000,
+                          0ULL * 1000 + 100,
+                          30ULL * 1000);
+CheckButtonInterval check_button(button_pin,
+                                 0ULL,
+                                 25ULL,
+                                 50ULL);
 constexpr Interval* intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
 
 
@@ -133,6 +147,14 @@ void load_state()
     if (state.crc == get_crc(&state.data, sizeof(state.data))) {
         for (size_t i = 0; i < State::intervals_count; i++)
             intervals[i]->load(state.data.times[i]);
+    }
+    else {
+        for (int i = 0; i < 5; i++) {
+            digitalWrite(autosave_led_pin, true);
+            delay(350);
+            digitalWrite(autosave_led_pin, false);
+            delay(350);
+        }
     }
 }
 
