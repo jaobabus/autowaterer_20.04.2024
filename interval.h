@@ -7,8 +7,8 @@
 class Interval
 {
 public:
-    constexpr Interval(Time start, Time end, Time total)
-        : _time(0), _start(start), _end(end), _total(total) {}
+    constexpr Interval(Time start, Time end, Time total, const char* name)
+        : _time(0), _start(start), _end(end), _total(total), _name(name) {}
 
 public:
     virtual void enter() = 0;
@@ -33,11 +33,33 @@ public:
     {
         _time += elapsed;
         if (_time >= _start and _time <= _start + elapsed)
-            enter();
+            _enter();
         if (_time >= _end and _time <= _end + elapsed)
-            exit();
+            _exit();
         if (_time >= _total)
             _time -= _total;
+    }
+
+    void _enter()
+    {
+        if (_name) {
+            Serial.print(_name);
+            Serial.print(" enter at ");
+            Serial.print(millis());
+            Serial.println("ms");
+        }
+        enter();
+    }
+
+    void _exit()
+    {
+        if (_name) {
+            Serial.print(_name);
+            Serial.print(" exit at ");
+            Serial.print(millis());
+            Serial.println("ms");
+        }
+        exit();
     }
 
 private:
@@ -45,6 +67,7 @@ private:
     const Time _start;
     const Time _end;
     const Time _total;
+    const char* const _name;
 
 };
 

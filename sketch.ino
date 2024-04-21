@@ -12,12 +12,13 @@ constexpr uint8_t autosave_led_pin = 13;
 class Relay1Interval : public Interval
 {
 public:
-    Relay1Interval(uint8_t pin, Time s, Time e, Time t)
-        : _pin(pin), Interval(s, e, t) {}
+    Relay1Interval(uint8_t pin, Time s, Time e, Time t, const char* n)
+        : _pin(pin), Interval(s, e, t, n) {}
 
 public:
     void change_pin() {
         digitalWrite(_pin, enabled);
+        Serial.println(enabled ? "Relay 1 enabled" : "Relay 1 disabled");
     }
     void enter() override {
         enabled = true;
@@ -40,13 +41,18 @@ private:
 class Relay2Interval : public Interval
 {
 public:
-    Relay2Interval(const Relay1Interval* relay1, bool master_state, uint8_t pin, Time s, Time e, Time t)
-        : _relay1(relay1), _master_state(master_state), _pin(pin), Interval(s, e, t) {}
+    Relay2Interval(const Relay1Interval* relay1, bool master_state, uint8_t pin, Time s, Time e, Time t, const char* n)
+        : _relay1(relay1), _master_state(master_state), _pin(pin), Interval(s, e, t, n) {}
 
 public:
     void change_pin() {
-        if (_relay1->enabled == _master_state)
+        if (_relay1->enabled == _master_state) {
             digitalWrite(_pin, enabled);
+            Serial.println(enabled ? "Relay 2 enabled" : "Relay 2 disabled");
+        }
+        else {
+            Serial.println(_relay1->enabled ? "Relay 2 not change enabled" : "Relay 1 not change disabled");
+        }
     }
     void enter() override {
         enabled = true;
@@ -83,8 +89,8 @@ public:
 class CheckButtonInterval : public Interval
 {
 public:
-    CheckButtonInterval(uint8_t pin, Time s, Time e, Time t)
-        : _pin(pin), _last(false), Interval(s, e, t) {}
+    CheckButtonInterval(uint8_t pin, Time s, Time e, Time t, const char* n)
+        : _pin(pin), _last(false), Interval(s, e, t, n) {}
 
 public:
     void enter() override;
@@ -102,22 +108,27 @@ private:
 Relay1Interval relay1(relay1_pin,
                       0ULL * 1000 * 3600,
                       16ULL * 1000 * 3600,
-                      24ULL * 1000 * 3600);
+                      24ULL * 1000 * 3600,
+                      "relay1");
 Relay2Interval relay2_true(&relay1, true, relay2_pin,
                            0ULL * 1000 * 3600,
                            3ULL * 1000 * 60,
-                           30ULL * 1000 * 60);
+                           30ULL * 1000 * 60,
+                      "relay2_true");
 Relay2Interval relay2_false(&relay1, false, relay2_pin,
                             0ULL * 1000 * 3600,
                             3ULL * 1000 * 60,
-                            120ULL * 1000 * 60);
+                            120ULL * 1000 * 60,
+                      "relay2_false");
 AutosaveInterval autosave(0ULL * 1000,
                           0ULL * 1000 + 100,
-                          30ULL * 1000);
+                          30ULL * 1000,
+                      "autosave");
 CheckButtonInterval check_button(button_pin,
                                  0ULL,
                                  25ULL,
-                                 50ULL);
+                                 50ULL,
+                                 nullptr);
 constexpr Interval* intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
 
 
@@ -148,14 +159,6 @@ void load_state()
         for (size_t i = 0; i < State::intervals_count; i++)
             intervals[i]->load(state.data.times[i]);
     }
-    else {
-        for (int i = 0; i < 5; i++) {
-            digitalWrite(autosave_led_pin, true);
-            delay(350);
-            digitalWrite(autosave_led_pin, false);
-            delay(350);
-        }
-    }
 }
 
 void save_state()
@@ -182,6 +185,7 @@ void reset_state()
 
 void setup()
 {
+    Serial.begin(115200);
     pinMode(button_pin, INPUT_PULLUP);
     pinMode(relay1_pin, OUTPUT);
     pinMode(relay2_pin, OUTPUT);
