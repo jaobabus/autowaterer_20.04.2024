@@ -1,13 +1,12 @@
-
-#include <EEPROM.h>
 #include "util.h"
 #include "interval.h"
+#include <EEPROM.h>
 
 
-constexpr uint8_t relay1_pin = 10;
-constexpr uint8_t relay2_pin = 11;
-constexpr uint8_t button_pin = 12;
-constexpr uint8_t autosave_led_pin = 13;
+constexpr uint8_t relay1_pin = 26;
+constexpr uint8_t relay2_pin = 27;
+constexpr uint8_t button_pin = 25;
+constexpr uint8_t autosave_led_pin = 33;
 
 
 class Relay1Interval : public Interval
@@ -43,7 +42,7 @@ class Relay2Interval : public Interval
 {
 public:
     Relay2Interval(const Relay1Interval* relay1, bool master_state, uint8_t pin, Time s, Time e, Time t, const char* n)
-        : _relay1(relay1), _master_state(master_state), _pin(pin), Interval(s, e, t, n) {}
+        : _relay1(relay1), _master_state(master_state), _pin(pin), _capture(false), Interval(s, e, t, n) {}
 
 public:
     void change_pin() {
@@ -57,11 +56,24 @@ public:
     }
     void enter() override {
         enabled = true;
-        change_pin();
+        if (_relay1->enabled == _master_state) {
+            _capture = true;
+            digitalWrite(_pin, enabled);
+            Serial.println(enabled ? "Relay 2 enabled" : "Relay 2 disabled");
+        }
+        else {
+            Serial.println(_relay1->enabled ? "Relay 2 not change enabled" : "Relay 1 not change disabled");
+        }
     }
     void exit() override {
         enabled = false;
-        change_pin();
+        if (_capture) {
+            digitalWrite(_pin, enabled);
+            Serial.println(enabled ? "Relay 2 enabled" : "Relay 2 disabled");
+        }
+        else {
+            Serial.println(_relay1->enabled ? "Relay 2 not captured enabled" : "Relay 1 not captured disabled");
+        }
     }
 
 public:
@@ -71,6 +83,7 @@ private:
     const Relay1Interval* const _relay1;
     const bool _master_state;
     const uint8_t _pin;
+    bool _capture;
 
 };
 
@@ -130,7 +143,7 @@ CheckButtonInterval check_button(button_pin,
                                  25ULL,
                                  50ULL,
                                  nullptr);
-Interval* const intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
+constexpr Interval* intervals[] = {&relay1, &relay2_true, &relay2_false, &autosave, &check_button};
 
 
 struct State
@@ -151,32 +164,29 @@ uint32_t get_crc(const void* data, size_t size)
     return crc;
 }
 
-State state;
 
 void load_state()
 {
+    State state;
     EEPROM.get(0, state);
     if (state.crc == get_crc(&state.data, sizeof(state.data))) {
         for (size_t i = 0; i < State::intervals_count; i++)
             intervals[i]->load(state.data.times[i]);
-        Serial.println("load config");
-    }
-    else {
-        Serial.println("error load config");
     }
 }
 
 void save_state()
 {
+    State state;
     for (size_t i = 0; i < State::intervals_count; i++)
         state.data.times[i] = intervals[i]->save();
     state.crc = get_crc(&state.data, sizeof(state.data));
     EEPROM.put(0, state);
-    Serial.println("save config");
 }
 
 void reset_state()
 {
+    State state;
     for (size_t i = 0; i < State::intervals_count; i++)
         state.data.times[i] = 0;
     state.crc = get_crc(&state.data, sizeof(state.data));
@@ -185,7 +195,6 @@ void reset_state()
     digitalWrite(autosave_led_pin, true);
     delay(1000);
     digitalWrite(autosave_led_pin, false);
-    Serial.println("reset config");
 }
 
 void setup()
@@ -211,13 +220,9 @@ void AutosaveInterval::exit()
 
 void CheckButtonInterval::enter()
 {
-    auto value = digitalRead(_pin);
-    if (_last != value and not value) {
-        _last = value;
+    if (_last != digitalRead(_pin) and digitalRead(_pin))
         reset_state();
-    }
-    else
-        _last = value;
+    _last = digitalRead(_pin);
 }
 
 void loop()
