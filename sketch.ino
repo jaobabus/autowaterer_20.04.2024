@@ -3,10 +3,10 @@
 #include <EEPROM.h>
 
 
-constexpr uint8_t relay1_pin = 26;
-constexpr uint8_t relay2_pin = 27;
-constexpr uint8_t button_pin = 25;
-constexpr uint8_t autosave_led_pin = 33;
+constexpr uint8_t relay1_pin = 10;
+constexpr uint8_t relay2_pin = 11;
+constexpr uint8_t button_pin = 12;
+constexpr uint8_t autosave_led_pin = 13;
 
 
 class Relay1Interval : public Interval
@@ -70,6 +70,7 @@ public:
         if (_capture) {
             digitalWrite(_pin, enabled);
             Serial.println(enabled ? "Relay 2 enabled" : "Relay 2 disabled");
+            _capture = false;
         }
         else {
             Serial.println(_relay1->enabled ? "Relay 2 not captured enabled" : "Relay 1 not captured disabled");
